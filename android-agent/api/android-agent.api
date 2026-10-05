@@ -49,6 +49,7 @@ public final class io/opentelemetry/android/agent/dsl/EndpointConfiguration {
 }
 
 public final class io/opentelemetry/android/agent/dsl/HttpExportConfiguration {
+	public final fun baseHeaders (Lkotlin/jvm/functions/Function0;)V
 	public final fun getBaseHeaders ()Ljava/util/Map;
 	public final fun getBaseUrl ()Ljava/lang/String;
 	public final fun getClientTls ()Lio/opentelemetry/android/agent/connectivity/ClientTlsConnectivity;

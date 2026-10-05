@@ -151,6 +151,28 @@ val otelJavaApi = otelRum.openTelemetry
 val otelKotlinApi = otelRum.openTelemetryKotlin
 ```
 
+### Dynamic export headers
+
+For authentication tokens that change during the app's lifetime, configure a header supplier inside
+`OpenTelemetryRumInitializer.initialize`'s configuration block:
+
+```kotlin
+httpExport {
+    baseUrl = "https://collector.example.com"
+    baseHeaders {
+        mapOf(
+            "X-App" to "my-app",
+            "Authorization" to "Bearer ${tokenStore.currentToken()}"
+        )
+    }
+}
+```
+
+The supplier is evaluated for each export request across traces, logs, and metrics. It replaces the
+static `baseHeaders` map; configure either static headers or a supplier. Signal-specific headers are
+retained, with global headers taking precedence on matching keys. The supplier must be thread-safe
+and non-blocking; read a cached token rather than performing a token refresh inside the supplier.
+
 # Features
 
 In addition to exposing the OTel Java API for manual instrumentation, agent also offers the following features:

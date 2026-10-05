@@ -8,6 +8,7 @@ package io.opentelemetry.android.agent.dsl
 import io.opentelemetry.android.Incubating
 import io.opentelemetry.android.agent.connectivity.ClientTlsConnectivity
 import io.opentelemetry.android.agent.connectivity.Compression
+import io.opentelemetry.android.agent.connectivity.HeadersConfig
 import io.opentelemetry.android.agent.connectivity.HttpEndpointConnectivity
 import io.opentelemetry.android.agent.connectivity.SSLContextConnectivity
 
@@ -21,10 +22,29 @@ class HttpExportConfiguration internal constructor() {
      */
     var baseUrl: String = ""
 
+    private var globalHeaders: HeadersConfig = HeadersConfig.Static(emptyMap())
+
     /**
      * Global headers that should be attached to any HTTP export requests.
+     * Assigning this property replaces any previously configured [baseHeaders] supplier.
+     * Returns an empty map when a supplier is configured, without invoking it.
      */
-    var baseHeaders: Map<String, String> = emptyMap()
+    var baseHeaders: Map<String, String>
+        get() = (globalHeaders as? HeadersConfig.Static)?.headers ?: emptyMap()
+        set(value) {
+            globalHeaders = HeadersConfig.Static(value)
+        }
+
+    /**
+     * Supplies global headers for each HTTP export request across all signals, replacing the
+     * static [baseHeaders] map. Signal-specific headers are retained, with global headers taking
+     * precedence on matching keys. The supplier runs on exporter threads and must be thread-safe
+     * and non-blocking. Use it to read a cached authentication token rather than refreshing the
+     * token here.
+     */
+    fun baseHeaders(supplier: () -> Map<String, String>) {
+        globalHeaders = HeadersConfig.Dynamic(supplier)
+    }
 
     /**
      * Default compression algorithm for all export requests.
@@ -52,7 +72,7 @@ class HttpExportConfiguration internal constructor() {
         HttpEndpointConnectivity.forTraces(
             chooseUrlSource(spansConfig),
             isFullUrl(spansConfig),
-            spansConfig.headers + baseHeaders,
+            resolveEndpointHeaders(spansConfig),
             chooseCompression(spansConfig.compression),
             sslContext,
             clientTls,
@@ -63,7 +83,7 @@ class HttpExportConfiguration internal constructor() {
         HttpEndpointConnectivity.forLogs(
             chooseUrlSource(logsConfig),
             isFullUrl(logsConfig),
-            logsConfig.headers + baseHeaders,
+            resolveEndpointHeaders(logsConfig),
             chooseCompression(logsConfig.compression),
             sslContext,
             clientTls,
@@ -74,11 +94,19 @@ class HttpExportConfiguration internal constructor() {
         HttpEndpointConnectivity.forMetrics(
             chooseUrlSource(metricsConfig),
             isFullUrl(metricsConfig),
-            metricsConfig.headers + baseHeaders,
+            resolveEndpointHeaders(metricsConfig),
             chooseCompression(metricsConfig.compression),
             sslContext,
             clientTls,
         )
+
+    private fun resolveEndpointHeaders(cfg: EndpointConfiguration): HeadersConfig {
+        val signalHeaders = cfg.headers.toMap()
+        return when (val headers = globalHeaders) {
+            is HeadersConfig.Static -> HeadersConfig.Static(signalHeaders + headers.headers)
+            is HeadersConfig.Dynamic -> HeadersConfig.Dynamic { signalHeaders + headers.supplier() }
+        }
+    }
 
     private fun chooseUrlSource(cfg: EndpointConfiguration): String =
         cfg.fullUrl?.takeUnless { it.isBlank() } ?: cfg.url.ifBlank { baseUrl }
