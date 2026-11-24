@@ -32,9 +32,9 @@ internal class DisabledExportConfigurationTest {
                 }
 
             if (enabledSignal == "none") {
-                assertThatCode { config.validateExportConfiguration() }.doesNotThrowAnyException()
+                assertThatCode { config.resolveExportConfiguration() }.doesNotThrowAnyException()
             } else {
-                assertThatThrownBy { config.validateExportConfiguration() }
+                assertThatThrownBy { config.resolveExportConfiguration() }
                     .describedAs(enabledSignal)
                     .isInstanceOf(IllegalArgumentException::class.java)
                     .hasMessage("sslContext and clientTls cannot be combined")
