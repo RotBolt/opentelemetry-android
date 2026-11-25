@@ -5,6 +5,7 @@
 
 package io.opentelemetry.android.agent.dsl
 
+import io.opentelemetry.android.agent.OtlpTransport
 import org.assertj.core.api.Assertions.assertThatCode
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -22,7 +23,7 @@ internal class EndpointUrlValidatorTest {
             "http://localhost:invalid/v1/traces",
             "http://localhost:999999999999/v1/traces",
         ).forEach { endpoint ->
-            assertThatThrownBy { EndpointUrlValidator.validate(endpoint) }
+            assertThatThrownBy { EndpointUrlValidator.validate(OtlpTransport.HTTP, endpoint) }
                 .describedAs(endpoint)
                 .isInstanceOf(IllegalArgumentException::class.java)
         }
@@ -39,7 +40,7 @@ internal class EndpointUrlValidatorTest {
             "http://[::1]:4318/v1/traces",
             "http://user:password@localhost/v1/traces",
         ).forEach { endpoint ->
-            assertThatCode { EndpointUrlValidator.validate(endpoint) }
+            assertThatCode { EndpointUrlValidator.validate(OtlpTransport.HTTP, endpoint) }
                 .describedAs(endpoint)
                 .doesNotThrowAnyException()
         }
